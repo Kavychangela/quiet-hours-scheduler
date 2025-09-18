@@ -1,103 +1,154 @@
-import Image from "next/image";
+'use client'
+
+import { useState, useEffect } from "react"
+import { supabase } from "./lib/supabaseClient"
+import { useRouter } from "next/navigation"
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [user, setUser] = useState(null)
+  const [schedules, setSchedules] = useState([])
+  const [startTime, setStartTime] = useState("")
+  const [endTime, setEndTime] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [schedulesLoading, setSchedulesLoading] = useState(true)
+  const router = useRouter()
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  useEffect(() => {
+    async function getUserAndSchedules() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push("/auth")
+      } else {
+        setUser(user)
+        fetchSchedules(user.id)
+      }
+    }
+    getUserAndSchedules()
+  }, [router])
+
+  const fetchSchedules = async (userId) => {
+    setSchedulesLoading(true)
+    const { data, error } = await supabase
+      .from('schedules')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      alert("Error fetching schedules: " + error.message)
+    } else {
+      setSchedules(data)
+    }
+    setSchedulesLoading(false)
+  }
+
+  const handleAddSchedule = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+
+    // Check for overlapping schedules
+    const isOverlap = schedules.some(
+      (s) => (startTime < s.end_time && endTime > s.start_time)
+    )
+    if (isOverlap) {
+      alert("This schedule overlaps with an existing one!")
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('schedules')
+      .insert([
+        { start_time: startTime, end_time: endTime, user_id: user.id }
+      ])
+
+    if (error) {
+      alert("Error adding schedule: " + error.message)
+    } else {
+      setStartTime("")
+      setEndTime("")
+      fetchSchedules(user.id)
+    }
+    setLoading(false)
+  }
+
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('schedules').delete().eq('id', id)
+    if (error) alert("Error deleting: " + error.message)
+    else fetchSchedules(user.id)
+  }
+
+  if (!user) {
+    return <div className="text-center mt-8">Loading...</div>
+  }
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Welcome, {user.email}</h1>
+      <button 
+        onClick={() => supabase.auth.signOut()}
+        className="bg-red-500 text-white p-2 rounded mb-4"
+      >
+        Logout
+      </button>
+
+      <div className="bg-gray-100 p-6 rounded-lg shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-3">Add Quiet Hours</h2>
+        <form onSubmit={handleAddSchedule}>
+          <div className="mb-4">
+            <label htmlFor="start_time" className="block mb-1">Start Time</label>
+            <input
+              type="time"
+              id="start_time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+              className="w-full p-2 border rounded"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <div className="mb-4">
+            <label htmlFor="end_time" className="block mb-1">End Time</label>
+            <input
+              type="time"
+              id="end_time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              required
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="bg-blue-500 text-white p-2 rounded w-full hover:bg-blue-600 disabled:opacity-50"
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            {loading ? 'Adding...' : 'Add Schedule'}
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-3">Your Upcoming Schedules</h2>
+        {schedulesLoading ? (
+          <div className="text-center">Loading schedules...</div>
+        ) : schedules.length > 0 ? (
+          <ul>
+            {schedules.map((schedule) => (
+              <li key={schedule.id} className="border-b last:border-b-0 py-2 flex justify-between items-center">
+                Quiet hours from {schedule.start_time} to {schedule.end_time}
+                <button 
+                  onClick={() => handleDelete(schedule.id)} 
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No schedules found. Add one above!</p>
+        )}
+      </div>
     </div>
-  );
+  )
 }
