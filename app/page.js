@@ -13,12 +13,11 @@ export default function Home() {
   const [schedulesLoading, setSchedulesLoading] = useState(true)
   const router = useRouter()
 
-  // Fetch user and schedules
   useEffect(() => {
     async function getUserAndSchedules() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push("/auth") // redirect if not logged in
+        router.push("/auth")
       } else {
         setUser(user)
         fetchSchedules(user.id)
@@ -84,12 +83,19 @@ export default function Home() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Welcome, {user.email}</h1>
-      <button 
-        onClick={() => supabase.auth.signOut()}
-        className="bg-red-500 text-white p-2 rounded mb-4"
-      >
-        Logout
-      </button>
+      <button
+  onClick={async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert("Error logging out: " + error.message);
+    } else {
+      router.push("/auth");
+    }
+  }}
+  className="bg-red-500 text-white p-2 rounded mb-4"
+>
+  Logout
+</button>
 
       {/* Add Schedule Form */}
       <div className="bg-gray-100 p-6 rounded-lg shadow-md mb-6">
