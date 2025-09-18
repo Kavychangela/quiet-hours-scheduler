@@ -13,11 +13,12 @@ export default function Home() {
   const [schedulesLoading, setSchedulesLoading] = useState(true)
   const router = useRouter()
 
+  // Fetch user and schedules
   useEffect(() => {
     async function getUserAndSchedules() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push("/auth")
+        router.push("/auth") // redirect if not logged in
       } else {
         setUser(user)
         fetchSchedules(user.id)
@@ -48,7 +49,7 @@ export default function Home() {
 
     // Check for overlapping schedules
     const isOverlap = schedules.some(
-      (s) => (startTime < s.end_time && endTime > s.start_time)
+      (s) => startTime < s.end_time && endTime > s.start_time
     )
     if (isOverlap) {
       alert("This schedule overlaps with an existing one!")
@@ -58,9 +59,7 @@ export default function Home() {
 
     const { error } = await supabase
       .from('schedules')
-      .insert([
-        { start_time: startTime, end_time: endTime, user_id: user.id }
-      ])
+      .insert([{ start_time: startTime, end_time: endTime, user_id: user.id }])
 
     if (error) {
       alert("Error adding schedule: " + error.message)
@@ -92,6 +91,7 @@ export default function Home() {
         Logout
       </button>
 
+      {/* Add Schedule Form */}
       <div className="bg-gray-100 p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-3">Add Quiet Hours</h2>
         <form onSubmit={handleAddSchedule}>
@@ -127,6 +127,7 @@ export default function Home() {
         </form>
       </div>
 
+      {/* Schedule List */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-3">Your Upcoming Schedules</h2>
         {schedulesLoading ? (
