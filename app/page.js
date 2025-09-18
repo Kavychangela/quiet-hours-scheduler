@@ -43,7 +43,7 @@ export default function Home() {
   }
 
   const handleAddSchedule = async (e) => {
-    e.preventDefault()
+    e.preventDefault() 
     setLoading(true)
 
     // Check for overlapping schedules
