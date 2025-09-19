@@ -1,12 +1,14 @@
-import Listener from "@/components/Listener";
+import './globals.css'
+
+export const metadata = {
+  title: 'Quiet Hours Scheduler',
+  description: 'Manage your silent-study blocks',
+}
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        {children}
-        <Listener />  {/* 👈 runs in background */}
-      </body>
+      <body>{children}</body>
     </html>
-  );
+  )
 }
